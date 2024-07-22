@@ -26,7 +26,7 @@
 //! ```
 //! use inlinable_string::InlineString;
 //!
-//! let mut s = InlineString::new();
+//! let mut s = InlineString::<30>::new();
 //! assert!(s.push_str("hi world").is_ok());
 //! assert_eq!(s, "hi world");
 //!
@@ -56,9 +56,9 @@ pub const INLINE_STRING_CAPACITY: usize = 14;
 ///
 /// See the [module level documentation](./index.html) for more.
 #[derive(Clone, Debug, Eq)]
-pub struct InlineString {
+pub struct InlineString<const N: usize> {
     length: u8,
-    bytes: [u8; INLINE_STRING_CAPACITY],
+    bytes: [u8; N],
 }
 
 /// The error returned when there is not enough space in a `InlineString` for the
@@ -66,21 +66,21 @@ pub struct InlineString {
 #[derive(Debug, PartialEq)]
 pub struct NotEnoughSpaceError;
 
-impl AsRef<str> for InlineString {
+impl<const N: usize> AsRef<str> for InlineString<N> {
     fn as_ref(&self) -> &str {
         self.assert_sanity();
         unsafe { str::from_utf8_unchecked(&self.bytes[..self.len()]) }
     }
 }
 
-impl AsRef<[u8]> for InlineString {
+impl<const N: usize> AsRef<[u8]> for InlineString<N> {
     #[inline]
     fn as_ref(&self) -> &[u8] {
         self.as_bytes()
     }
 }
 
-impl AsMut<str> for InlineString {
+impl<const N: usize> AsMut<str> for InlineString<N> {
     fn as_mut(&mut self) -> &mut str {
         self.assert_sanity();
         let length = self.len();
@@ -88,7 +88,7 @@ impl AsMut<str> for InlineString {
     }
 }
 
-impl AsMut<[u8]> for InlineString {
+impl<const N: usize> AsMut<[u8]> for InlineString<N> {
     #[inline]
     fn as_mut(&mut self) -> &mut [u8] {
         self.assert_sanity();
@@ -103,12 +103,12 @@ impl AsMut<[u8]> for InlineString {
 ///
 /// If the given string's size is greater than `INLINE_STRING_CAPACITY`, this
 /// method panics.
-impl<'a> From<&'a str> for InlineString {
-    fn from(string: &'a str) -> InlineString {
+impl<'a, const N: usize> From<&'a str> for InlineString<N> {
+    fn from(string: &'a str) -> InlineString<N> {
         let string_len = string.len();
-        assert!(string_len <= INLINE_STRING_CAPACITY);
+        assert!(string_len <= N);
 
-        let mut ss = InlineString::new();
+        let mut ss = InlineString::<N>::new();
         unsafe {
             ptr::copy_nonoverlapping(string.as_ptr(), ss.bytes.as_mut_ptr(), string_len);
         }
@@ -119,14 +119,14 @@ impl<'a> From<&'a str> for InlineString {
     }
 }
 
-impl fmt::Display for InlineString {
+impl<const N: usize> fmt::Display for InlineString<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         self.assert_sanity();
         write!(f, "{}", self as &str)
     }
 }
 
-impl fmt::Write for InlineString {
+impl<const N: usize> fmt::Write for InlineString<N> {
     fn write_char(&mut self, ch: char) -> Result<(), fmt::Error> {
         self.push(ch).map_err(|_| fmt::Error)
     }
@@ -135,14 +135,14 @@ impl fmt::Write for InlineString {
     }
 }
 
-impl hash::Hash for InlineString {
+impl<const N: usize> hash::Hash for InlineString<N> {
     #[inline]
     fn hash<H: hash::Hasher>(&self, hasher: &mut H) {
         (**self).hash(hasher)
     }
 }
 
-impl ops::Index<ops::Range<usize>> for InlineString {
+impl<const N: usize> ops::Index<ops::Range<usize>> for InlineString<N> {
     type Output = str;
 
     #[inline]
@@ -152,7 +152,7 @@ impl ops::Index<ops::Range<usize>> for InlineString {
     }
 }
 
-impl ops::Index<ops::RangeTo<usize>> for InlineString {
+impl<const N: usize> ops::Index<ops::RangeTo<usize>> for InlineString<N> {
     type Output = str;
 
     #[inline]
@@ -162,7 +162,7 @@ impl ops::Index<ops::RangeTo<usize>> for InlineString {
     }
 }
 
-impl ops::Index<ops::RangeFrom<usize>> for InlineString {
+impl<const N: usize> ops::Index<ops::RangeFrom<usize>> for InlineString<N> {
     type Output = str;
 
     #[inline]
@@ -172,7 +172,7 @@ impl ops::Index<ops::RangeFrom<usize>> for InlineString {
     }
 }
 
-impl ops::Index<ops::RangeFull> for InlineString {
+impl<const N: usize> ops::Index<ops::RangeFull> for InlineString<N> {
     type Output = str;
 
     #[inline]
@@ -182,7 +182,7 @@ impl ops::Index<ops::RangeFull> for InlineString {
     }
 }
 
-impl ops::IndexMut<ops::Range<usize>> for InlineString {
+impl<const N: usize> ops::IndexMut<ops::Range<usize>> for InlineString<N> {
     #[inline]
     fn index_mut(&mut self, index: ops::Range<usize>) -> &mut str {
         self.assert_sanity();
@@ -190,7 +190,7 @@ impl ops::IndexMut<ops::Range<usize>> for InlineString {
     }
 }
 
-impl ops::IndexMut<ops::RangeTo<usize>> for InlineString {
+impl<const N: usize> ops::IndexMut<ops::RangeTo<usize>> for InlineString<N> {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut str {
         self.assert_sanity();
@@ -198,7 +198,7 @@ impl ops::IndexMut<ops::RangeTo<usize>> for InlineString {
     }
 }
 
-impl ops::IndexMut<ops::RangeFrom<usize>> for InlineString {
+impl<const N: usize> ops::IndexMut<ops::RangeFrom<usize>> for InlineString<N> {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut str {
         self.assert_sanity();
@@ -206,7 +206,7 @@ impl ops::IndexMut<ops::RangeFrom<usize>> for InlineString {
     }
 }
 
-impl ops::IndexMut<ops::RangeFull> for InlineString {
+impl<const N: usize> ops::IndexMut<ops::RangeFull> for InlineString<N> {
     #[inline]
     fn index_mut(&mut self, _index: ops::RangeFull) -> &mut str {
         self.assert_sanity();
@@ -215,7 +215,7 @@ impl ops::IndexMut<ops::RangeFull> for InlineString {
     }
 }
 
-impl ops::Deref for InlineString {
+impl<const N: usize> ops::Deref for InlineString<N> {
     type Target = str;
 
     #[inline]
@@ -225,7 +225,7 @@ impl ops::Deref for InlineString {
     }
 }
 
-impl ops::DerefMut for InlineString {
+impl<const N: usize> ops::DerefMut for InlineString<N> {
     #[inline]
     fn deref_mut(&mut self) -> &mut str {
         self.assert_sanity();
@@ -234,16 +234,16 @@ impl ops::DerefMut for InlineString {
     }
 }
 
-impl Default for InlineString {
+impl<const N: usize> Default for InlineString<N> {
     #[inline]
-    fn default() -> InlineString {
-        InlineString::new()
+    fn default() -> InlineString<N> {
+        InlineString::<N>::new()
     }
 }
 
-impl PartialEq<InlineString> for InlineString {
+impl<const N: usize> PartialEq<InlineString<N>> for InlineString<N> {
     #[inline]
-    fn eq(&self, rhs: &InlineString) -> bool {
+    fn eq(&self, rhs: &InlineString<N>) -> bool {
         self.assert_sanity();
         rhs.assert_sanity();
         PartialEq::eq(&self[..], &rhs[..])
@@ -251,17 +251,17 @@ impl PartialEq<InlineString> for InlineString {
 }
 
 macro_rules! impl_eq {
-    ($lhs:ty, $rhs: ty) => {
-        impl<'a> PartialEq<$rhs> for $lhs {
+    ($lhs:tt, $rhs: ty) => {
+        impl<'a, const N: usize> PartialEq<$rhs> for $lhs <N> {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool {
                 PartialEq::eq(&self[..], &other[..])
             }
         }
 
-        impl<'a> PartialEq<$lhs> for $rhs {
+        impl<'a, const N: usize> PartialEq<$lhs<N>> for $rhs {
             #[inline]
-            fn eq(&self, other: &$lhs) -> bool {
+            fn eq(&self, other: &$lhs<N>) -> bool {
                 PartialEq::eq(&self[..], &other[..])
             }
         }
@@ -270,14 +270,14 @@ macro_rules! impl_eq {
 
 impl_eq! { InlineString, str }
 impl_eq! { InlineString, &'a str }
-impl_eq! { borrow::Cow<'a, str>, InlineString }
+impl_eq! { InlineString, borrow::Cow<'a, str> }
 
-impl InlineString {
+impl<const N: usize> InlineString<N> {
     #[cfg_attr(feature = "nightly", allow(inline_always))]
     #[inline(always)]
     fn assert_sanity(&self) {
         debug_assert!(
-            self.length as usize <= INLINE_STRING_CAPACITY,
+            self.length as usize <= N,
             "inlinable_string: internal error: length greater than capacity"
         );
         debug_assert!(
@@ -293,13 +293,13 @@ impl InlineString {
     /// ```
     /// use inlinable_string::InlineString;
     ///
-    /// let s = InlineString::new();
+    /// let s = InlineString::<30>::new();
     /// ```
     #[inline]
-    pub fn new() -> InlineString {
-        InlineString {
+    pub fn new() -> InlineString<N> {
+        InlineString::<N> {
             length: 0,
-            bytes: [0; INLINE_STRING_CAPACITY],
+            bytes: [0; N],
         }
     }
 
@@ -311,14 +311,14 @@ impl InlineString {
     /// ```
     /// use inlinable_string::InlineString;
     ///
-    /// let s = InlineString::from("hello");
+    /// let s = InlineString::<30>::from("hello");
     /// let bytes = s.into_bytes();
     /// assert_eq!(&bytes[0..5], [104, 101, 108, 108, 111]);
     /// ```
     #[inline]
-    pub fn into_bytes(mut self) -> [u8; INLINE_STRING_CAPACITY] {
+    pub fn into_bytes(mut self) -> [u8; N] {
         self.assert_sanity();
-        for i in self.len()..INLINE_STRING_CAPACITY {
+        for i in self.len()..N {
             self.bytes[i] = 0;
         }
         self.bytes
@@ -331,7 +331,7 @@ impl InlineString {
     /// ```
     /// use inlinable_string::InlineString;
     ///
-    /// let mut s = InlineString::from("foo");
+    /// let mut s = InlineString::<30>::from("foo");
     /// s.push_str("bar");
     /// assert_eq!(s, "foobar");
     /// ```
@@ -342,7 +342,7 @@ impl InlineString {
         let string_len = string.len();
         let new_length = self.len() + string_len;
 
-        if new_length > INLINE_STRING_CAPACITY {
+        if new_length > N {
             return Err(NotEnoughSpaceError);
         }
 
@@ -366,7 +366,7 @@ impl InlineString {
     /// ```
     /// use inlinable_string::InlineString;
     ///
-    /// let mut s = InlineString::from("abc");
+    /// let mut s = InlineString::<30>::from("abc");
     /// s.push('1');
     /// s.push('2');
     /// s.push('3');
@@ -379,12 +379,12 @@ impl InlineString {
         let char_len = ch.len_utf8();
         let new_length = self.len() + char_len;
 
-        if new_length > INLINE_STRING_CAPACITY {
+        if new_length > N {
             return Err(NotEnoughSpaceError);
         }
 
         {
-            let mut slice = &mut self.bytes[self.length as usize..INLINE_STRING_CAPACITY];
+            let mut slice = &mut self.bytes[self.length as usize..N];
             ch.encode_utf8(&mut slice);
         }
         self.length = new_length as u8;
@@ -400,7 +400,7 @@ impl InlineString {
     /// ```
     /// use inlinable_string::InlineString;
     ///
-    /// let s = InlineString::from("hello");
+    /// let s = InlineString::<30>::from("hello");
     /// assert_eq!(s.as_bytes(), [104, 101, 108, 108, 111]);
     /// ```
     #[inline]
@@ -421,7 +421,7 @@ impl InlineString {
     /// ```
     /// use inlinable_string::InlineString;
     ///
-    /// let mut s = InlineString::from("hello");
+    /// let mut s = InlineString::<30>::from("hello");
     /// s.truncate(2);
     /// assert_eq!(s, "he");
     /// ```
@@ -448,7 +448,7 @@ impl InlineString {
     /// ```
     /// use inlinable_string::InlineString;
     ///
-    /// let mut s = InlineString::from("foo");
+    /// let mut s = InlineString::<30>::from("foo");
     /// assert_eq!(s.pop(), Some('o'));
     /// assert_eq!(s.pop(), Some('o'));
     /// assert_eq!(s.pop(), Some('f'));
@@ -481,7 +481,7 @@ impl InlineString {
     /// ```
     /// use inlinable_string::InlineString;
     ///
-    /// let mut s = InlineString::from("foo");
+    /// let mut s = InlineString::<30>::from("foo");
     /// assert_eq!(s.remove(0), 'f');
     /// assert_eq!(s.remove(1), 'o');
     /// assert_eq!(s.remove(0), 'o');
@@ -523,8 +523,8 @@ impl InlineString {
         let len = self.len();
         let amt = bytes.len();
 
-        // This subtraction does not overflow because `INLINE_STRING_CAPACITY >= self.len()` holds.
-        if amt > INLINE_STRING_CAPACITY - len {
+        // This subtraction does not overflow because `N >= self.len()` holds.
+        if amt > N - len {
             return Err(NotEnoughSpaceError);
         }
 
@@ -538,7 +538,7 @@ impl InlineString {
         );
         // Copy the bytes into the buffer.
         ptr::copy(bytes.as_ptr(), self.bytes.as_mut_ptr().add(idx), amt);
-        // `amt` is less than `u8::MAX` becuase `INLINE_STRING_CAPACITY < u8::MAX` holds.
+        // `amt` is less than `u8::MAX` becuase `N < u8::MAX` holds.
         self.length += amt as u8;
 
         Ok(())
@@ -551,7 +551,7 @@ impl InlineString {
     /// ```
     /// use inlinable_string::InlineString;
     ///
-    /// let mut s = InlineString::from("foo");
+    /// let mut s = InlineString::<30>::from("foo");
     /// s.insert(2, 'f');
     /// assert!(s == "fofo");
     /// ```
@@ -583,7 +583,7 @@ impl InlineString {
     /// ```
     /// use inlinable_string::InlineString;
     ///
-    /// let mut s = InlineString::from("foo");
+    /// let mut s = InlineString::<30>::from("foo");
     /// s.insert_str(2, "bar");
     /// assert!(s == "fobaro");
     /// ```
@@ -612,7 +612,7 @@ impl InlineString {
     /// ```
     /// use inlinable_string::InlineString;
     ///
-    /// let mut s = InlineString::from("hello");
+    /// let mut s = InlineString::<30>::from("hello");
     /// unsafe {
     ///     let slice = s.as_mut_slice();
     ///     assert!(slice == &[104, 101, 108, 108, 111]);
@@ -633,7 +633,7 @@ impl InlineString {
     /// ```
     /// use inlinable_string::InlineString;
     ///
-    /// let a = InlineString::from("foo");
+    /// let a = InlineString::<30>::from("foo");
     /// assert_eq!(a.len(), 3);
     /// ```
     #[inline]
@@ -649,7 +649,7 @@ impl InlineString {
     /// ```
     /// use inlinable_string::InlineString;
     ///
-    /// let mut v = InlineString::new();
+    /// let mut v = InlineString::<30>::new();
     /// assert!(v.is_empty());
     /// v.push('a');
     /// assert!(!v.is_empty());
@@ -667,7 +667,7 @@ impl InlineString {
     /// ```
     /// use inlinable_string::InlineString;
     ///
-    /// let mut s = InlineString::from("foo");
+    /// let mut s = InlineString::<30>::from("foo");
     /// s.clear();
     /// assert!(s.is_empty());
     /// ```
@@ -686,19 +686,19 @@ mod tests {
 
     #[test]
     fn test_push_str() {
-        let mut s = InlineString::new();
+        let mut s = InlineString::<INLINE_STRING_CAPACITY>::new();
         assert!(s.push_str("small").is_ok());
         assert_eq!(s, "small");
 
         let long_str = "this is a really long string that is much larger than
-                        INLINE_STRING_CAPACITY and so cannot be stored inline.";
+                        N and so cannot be stored inline.";
         assert_eq!(s.push_str(long_str), Err(NotEnoughSpaceError));
         assert_eq!(s, "small");
     }
 
     #[test]
     fn test_push() {
-        let mut s = InlineString::new();
+        let mut s = InlineString::<INLINE_STRING_CAPACITY>::new();
 
         for _ in 0..INLINE_STRING_CAPACITY {
             assert!(s.push('a').is_ok());
@@ -709,7 +709,7 @@ mod tests {
 
     #[test]
     fn test_insert() {
-        let mut s = InlineString::new();
+        let mut s = InlineString::<INLINE_STRING_CAPACITY>::new();
 
         for _ in 0..INLINE_STRING_CAPACITY {
             assert!(s.insert(0, 'a').is_ok());
@@ -722,7 +722,7 @@ mod tests {
     fn test_write() {
         use core::fmt::{Error, Write};
 
-        let mut s = InlineString::new();
+        let mut s = InlineString::<INLINE_STRING_CAPACITY>::new();
         let mut normal_string = String::new();
 
         for _ in 0..INLINE_STRING_CAPACITY {

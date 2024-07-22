@@ -37,7 +37,7 @@
 //!
 //! // This method can work on strings potentially stored inline on the stack,
 //! // on the heap, or plain old `std::string::String`s!
-//! fn takes_a_string_reference(string: &mut StringExt) {
+//! fn takes_a_string_reference(string: &mut dyn StringExt) {
 //!    // Do something with the string...
 //!    string.push_str("it works!");
 //! }
@@ -116,7 +116,7 @@ pub enum InlinableString {
     /// A heap-allocated string.
     Heap(String),
     /// A small string stored inline.
-    Inline(InlineString),
+    Inline(InlineString<INLINE_STRING_CAPACITY>),
 }
 
 impl fmt::Debug for InlinableString {
@@ -418,8 +418,23 @@ macro_rules! impl_eq {
 impl_eq! { InlinableString, str }
 impl_eq! { InlinableString, String }
 impl_eq! { InlinableString, &'a str }
-impl_eq! { InlinableString, InlineString }
-impl_eq! { Cow<'a, str>, InlinableString }
+
+//impl_eq! { InlinableString, InlineString }
+impl<'a, const N: usize> PartialEq<InlineString<N>> for InlinableString {
+    #[inline]
+    fn eq(&self, other: &InlineString<N>) -> bool {
+        PartialEq::eq(&self[..], &other[..])
+    }
+}
+
+impl<'a, const N: usize> PartialEq<InlinableString> for InlineString<N> {
+    #[inline]
+    fn eq(&self, other: &InlinableString) -> bool {
+        PartialEq::eq(&self[..], &other[..])
+    }
+}
+
+impl_eq! { InlinableString, Cow<'a, str> }
 
 impl<'a> StringExt<'a> for InlinableString {
     #[inline]
