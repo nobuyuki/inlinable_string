@@ -35,6 +35,7 @@
 //! ```
 
 use alloc::borrow;
+use core::cmp;
 use core::fmt;
 use core::hash;
 use core::ops;
@@ -271,6 +272,48 @@ macro_rules! impl_eq {
 impl_eq! { InlineString, str }
 impl_eq! { InlineString, &'a str }
 impl_eq! { InlineString, borrow::Cow<'a, str> }
+
+
+impl<const N: usize> PartialOrd<InlineString<N>> for InlineString<N> {
+    #[inline]
+    fn partial_cmp(&self, rhs: &InlineString<N>) -> Option<cmp::Ordering> {
+        self.assert_sanity();
+        rhs.assert_sanity();
+        cmp::PartialOrd::partial_cmp(&self[..], &rhs[..])
+    }
+}
+
+impl<const N: usize> Ord for InlineString<N> {
+    #[inline]
+    fn cmp(&self, rhs: &InlineString<N>) -> cmp::Ordering {
+        self.assert_sanity();
+        rhs.assert_sanity();
+        cmp::Ord::cmp(&self[..], &rhs[..])
+    }
+}
+
+macro_rules! impl_ords {
+    ($lhs:tt, $rhs: ty) => {
+        impl<'a, const N: usize> PartialOrd<$rhs> for $lhs <N> {
+            #[inline]
+            fn partial_cmp(&self, other: &$rhs) -> Option<cmp::Ordering> {
+                cmp::PartialOrd::partial_cmp(&self[..], &other[..])
+            }
+        }
+
+        impl<'a, const N: usize> PartialOrd<$lhs<N>> for $rhs {
+            #[inline]
+            fn partial_cmp(&self, other: &$lhs<N>) -> Option<cmp::Ordering> {
+                cmp::PartialOrd::partial_cmp(&self[..], &other[..])
+            }
+        }
+    };
+}
+
+impl_ords! { InlineString, str }
+impl_ords! { InlineString, &'a str }
+impl_ords! { InlineString, borrow::Cow<'a, str> }
+
 
 impl<const N: usize> InlineString<N> {
     #[cfg_attr(feature = "nightly", allow(inline_always))]
